@@ -1,0 +1,8 @@
+.venv
+.vscode
+__pycache__
+*.pyc
+api_check
+.env
+inline_terminal_spacing.py
+inline_terminal_woDocker.py
