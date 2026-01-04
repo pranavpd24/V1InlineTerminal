@@ -1,17 +1,14 @@
 '''
 AI Powered Inline Terminal Assistant
 
-This file has some changes made for the writing of the code by the gemini to the file system.
+ - This is the terminal which can correct your commands and explain you why you are failing and maintains the transperancy via taking permission    
+    to execute the commands.
+     
+
 
 Author:
---Pranav Digraskar
-Starting-Date: 29/11/25
-Last-Modified: 30/11/25
-
-logs:
-- 30/11/25: Fixed bugs in execute_with_ieditor function for correct file writing and directory handling.
-- 06/12/25: Started implenting the class APIKeyManager for managing multiple API keys using keyring.
-- 07/12/25: Added inline getmodels and setmodel to set the model dynamically.
+    - Pranav Digraskar
+    - digraskarpranav@gmail.com
 '''
 
 
@@ -42,9 +39,6 @@ import anthropic
 from argon2 import PasswordHasher, Type
 import yaml
 
-def addSpacing():# this is a custom function to add the spacing in the automated task
-    print("########################################################")
-    print()
 
 
 #Password Hashing
@@ -57,54 +51,76 @@ ph = PasswordHasher(
     type = Type.ID
 )
 
-
-
 class Config:
+    #Set-up Variables
+    isDirConfig: bool = False
     isPasswordSet : bool = False
     isAPIKeyConfig : bool = False
     isSetupDone : bool = False
+
+    #API-KEY Variables
     GEMINI_API_KEY : str = None
     OPENAI_API_KEY : str = None
     ANTHROPIC_API_KEY : str = None
     
+    #DIR-PATH Variables
+    appDirPath: str = None
+    configDirPath: str = None
+    logsDirPath: str = None
+
+    #FILE-PATH Variables
+    configFilePath: str = None
+    logsFilePath: str = None
+    
     def __init__(self):
         self.ConfigSet()
         self.PassSet()
+    # class OpenConfigFile:
+    #     with open(configFilePath, "r")as f:
+    #                 configdata = yaml.safe_load(f)
+    #                 Config.isDirConfig = configdata["setupVar"]["isDirConfig"]
+    #                 Config.isPasswordSet = configdata["setupVar"]["isPasswordSet"]
+    #                 Config.isAPIKeyConfig = configdata["setupVar"]["isAPIKeyConfig"]
+    #                 Config.isSetupDone = configdata["setupVar"]["isSetupDone"]
+    #                 Config.appDirPath = configdata["env"]["appDirPath"]
+    #                 Config.configDirPath = configdata["env"]["configDirPath"]
+    #                 Config.logsDirPath = configdata["env"]["logsDirPath"]
 
-    def ConfigSet():
+
+    def addSpacing(self, text):# this is a custom function to add the spacing in the automated task
+        print("="*60)
+        print(text)
+
+    def ConfigSet(self):
         try:
             home_dir = os.path.expanduser("~")
-            app_dir = os.path.join(home_dir, ".inlineterminal")
-            logs_dir = os.path.join(app_dir, "logs")
-            config_dir = os.path.join(app_dir, "config")
+            Config.appDirPath = app_dir = os.path.join(home_dir, ".inlineterminal")
+            Config.logsDirPath = logs_dir = os.path.join(app_dir, "logs")
+            Config.configDirPath = config_dir = os.path.join(app_dir, "config")
             config_file_path = os.path.join(config_dir, "config.yml")
-            logs_file_path = os.path.join(logs_dir, "logs.yml")
+            logs_file_path = os.path.join(logs_dir, "inlineterminal.log")
             if not os.path.exists(app_dir):
-                addSpacing()
-                print("No Set-up Directory Found For Inline-Terminal")
-                addSpacing()
-                print("Setting up the dir and the all the necessary files for the Safe Execution of Inline-Terminal")
-                addSpacing()
+                self.addSpacing("No Set-up Directory Found For Inline-Terminal")
+                self.addSpacing("Setting up the dir and the all the necessary files for the Safe Execution of Inline-Terminal")
                 os.makedirs(app_dir, exist_ok=True)
-                logs_dir = os.path.join(app_dir, "logs")
-                config_dir = os.path.join(app_dir, "config")
                 os.makedirs(logs_dir, exist_ok=True)
                 os.makedirs(config_dir, exist_ok=True)
-                addSpacing()
-                config_file_path = os.path.join(config_dir, "config.yml")
-                logs_file_path = os.path.join(logs_dir, "logs.yml")
+                self.addSpacing("")
+                Config.configFilePath = config_file_path = os.path.join(config_dir, "config.yml")
+                Config.logsFilePath = logs_file_path = os.path.join(logs_dir, "inlineterminal.log")
                 default_config_content = f'''
 serviceName: Inline-Terminal
 version : 1.0
 setupVar:
+    isDirConfig: true
     isPasswordSet: false
     isAPIKeyConfig: false
     isSetupDone: false
 
 env: 
-    appPath: {app_dir}
-    configPath: {config_dir}
-    logsPath: {logs_dir}
+    appDirPath: {Config.appDirPath}
+    configDirPath: {Config.configDirPath}
+    logsDirPath: {Config.logsDirPath}
 apikey:
     setGemini: false
     setOpenAI: false
@@ -112,19 +128,23 @@ apikey:
 '''
                 with open(config_file_path, "w") as f:
                     f.write(default_config_content)
-                    print("Setting up Completed")
+                    self.addSpacing("Setting up Completed")
             else:
                 with open(config_file_path, "r")as f:
                     configdata = yaml.safe_load(f)
-                    isPasswordSet = configdata["setupVar"]["isPasswordSet"]
-                    isAPIKeyConfig = configdata["setupVar"]["isAPIKeyConfig"]
-                    isSetupDone = configdata["setupVar"]["isSetupDone"]
+                    Config.isDirConfig = configdata["setupVar"]["isDirConfig"]
+                    Config.isPasswordSet = configdata["setupVar"]["isPasswordSet"]
+                    Config.isAPIKeyConfig = configdata["setupVar"]["isAPIKeyConfig"]
+                    Config.isSetupDone = configdata["setupVar"]["isSetupDone"]
+                    Config.appDirPath = configdata["env"]["appDirPath"]
+                    Config.configDirPath = configdata["env"]["configDirPath"]
+                    Config.logsDirPath = configdata["env"]["logsDirPath"]
         
         except FileNotFoundError as e:
             print(f"Error Occurred: {e}")
 
 
-    def PassSet():
+    def PassSet(self):
         if not Config.isPasswordSet:
             passwordsetIP = input("do you want to set the passwords for api-keys??(Y/N)")
             while(passwordsetIP.lower() not in ["y","n"]):
@@ -145,36 +165,19 @@ apikey:
                     keyring.set_password(service_name="OpenAI", username=hashed_password_list[len(hashed_password_list)-1], password=setOPENAIApiKey)
                 if setAnthropicApiKey:
                     keyring.set_password(service_name="Anthropic", username=hashed_password_list[len(hashed_password_list)-1], password=setAnthropicApiKey)
+                with open(Config.configFilePath, "w") as f:
+                    configdata = yaml.safe_load(f)
+                    configdata["setupVar"]["isPasswordSet"] = 'true'
                 print("API-KEY's Set Successfully")
+
             else:
                 print("Skipping API-KEY setup")
     
     def addAPIKEYS():
-        if 
+        pass
         
 
         
-
-            
-                
-
-                    
-                    
-
-            
-
-
-   
-
-
-
-
-
-
-
-
-
-
 
 custom_style = Style.from_dict({
     # Prompt styling
@@ -729,12 +732,54 @@ def read_all_files(folder_path, exclude_folders=None):# this function will read 
 def suggest_commands(cmd_history):# this function will suggest the commands based on the history of the commands used earlier
     try:
         client = genai.Client(api_key=gemini_api_key)
+        system_prompt = """
+<identity>
+You are an AI CLI Assistant called Inline Terminal Assistant.
+You operate inside a Windows Command Prompt environment.
+</identity>
+
+<capabilities>
+- Always return a valid JSON object with a single key "commands".
+- The value of "commands" must be a list of **Windows CMD commands only** (not PowerShell or Bash).
+- FIRST CREATE DIRECTORIES IF NEEDED using mkdir command before using cd into them. AND THEN create files using echo or WRITE_FILE command.(VERY IMPORTANT FOR FILE CREATION)
+- For file creation with code, use this format:
+  "WRITE_FILE:filename|||code_content_here"
+  
+Example:
+{
+  "commands": [
+    "mkdir myproject",
+    "cd myproject",
+    "python app.py"
+  ]
+}
+
+- Commands must be syntactically correct for Windows Command Prompt.
+- Do NOT include:
+  • Any explanations, markdown, code fences, or extra text.
+  • Any labels such as [DANGEROUS], [SAFE], or comments.
+  • Any Linux or PowerShell commands (e.g., ls, rm, echo '...', | Out-File).
+
+- Assume all commands will be shown to the user for confirmation and executed in a secure sandbox (Docker container).
+- Therefore, **no safety labels or warnings** are needed — just clean CMD commands.
+- If unsure or no valid command applies, return {"commands": []}.
+</capabilities>
+"""
+        content = f"{system_prompt}\n\nUser request: {Query}"
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f"you are a cli expert this is history of the cmd used earlier can you predict the next 5 cmds and give me the list of it only list dont give me any thing so i can parse these things cmdhistory={cmd_history}"
+            contents=content
         )
-        response_list = ast.literal_eval(response.text)
-        return response_list
+        start_find_index = response.text.find('{')
+        end_find_index = response.text.rfind('}')+1
+        extracted_json = response.text[start_find_index:end_find_index]
+        json_response = json.loads(extracted_json)
+        list_of_commands = json_response['commands']
+        return list_of_commands
+
+
+        # response_list = ast.literal_eval(response.text)
+        # return response_list
     except:
         return []
 
@@ -1207,7 +1252,7 @@ while True:
                         execute_command_confirmation = input("Do you want to Continue with the command?(Y/N): ")
                     if execute_command_confirmation.lower() == 'y':
                         # CHANGED: Use text instead of cmdLine for subprocess.run
-                        cmdExecution = subprocess.run(text, shell=True, env=os.environ.copy(), stdin=sys.stdin,stdout=sys.stdout, stderr=sys.stderr, cwd=current_path,
+                        cmdExecution = subprocess.run(text, shell=True, env=os.environ.copy(), stdin=sys.stdin,stdout=sys.stdout, stderr=subprocess.PIPE, cwd=current_path,
                                                       text=True)
                         if cmdExecution.stdout:
                             print(cmdExecution.stdout.strip())
@@ -1223,9 +1268,11 @@ while True:
                                 completer = CompositeCompleter(command_completer, path_completer)
                         elif cmdExecution.returncode != 0:
                             print(f"Command failed with return code: {cmdExecution.returncode}")
-                            inlineDebug(text, cmdExecution.returncode, cmdExecution.stderr)
+                            print("error writing")
+                            print(cmdExecution.stderr.strip())
+                            print(inlineDebug(text, cmdExecution.returncode, cmdExecution.stderr.strip()))
                 else:
-                    cmdExecution = subprocess.run(text, shell=True, env=os.environ.copy(), stdin=sys.stdin,stdout=sys.stdout, stderr=sys.stderr,
+                    cmdExecution = subprocess.run(text, shell=True, env=os.environ.copy(), stdin=sys.stdin,stdout=sys.stdout, stderr=subprocess.PIPE,
                                                   text=True, cwd=current_path)
                     if cmdExecution.stdout:
                         print(cmdExecution.stdout.strip())
@@ -1241,7 +1288,7 @@ while True:
                             completer = CompositeCompleter(command_completer, path_completer)
                     elif cmdExecution.returncode != 0:
                         print(f"Command failed with return code: {cmdExecution.returncode}")
-                        # inlineDebug(text, cmdExecution.returncode, cmdExecution.stderr.strip())
+                        inlineDebug(text, cmdExecution.returncode, cmdExecution.stderr.strip())
             except Exception as e:
                 print(f"Error Occurred: {e}")
 
