@@ -2,7 +2,7 @@
 AI Powered Inline Terminal Assistant
 
  - This is the terminal which can correct your commands and explain you why you are failing and maintains the transperancy via taking permission    
-    to execute the commands.
+   to execute the commands.
      
 
 
@@ -42,6 +42,8 @@ import yaml
 
 
 #Password Hashing
+class PasswordHashing:
+    pass
 ph = PasswordHasher(
     time_cost=2,
     memory_cost=102400,
@@ -52,11 +54,13 @@ ph = PasswordHasher(
 )
 
 class Config:
+    #HOME-DIR VARS
+    home_dir = os.path.expanduser("~")
+
+
     #Set-up Variables
-    isDirConfig: bool = False
     isPasswordSet : bool = False
     isAPIKeyConfig : bool = False
-    isSetupDone : bool = False
 
     #API-KEY Variables
     GEMINI_API_KEY : str = None
@@ -64,50 +68,36 @@ class Config:
     ANTHROPIC_API_KEY : str = None
     
     #DIR-PATH Variables
-    appDirPath: str = None
-    configDirPath: str = None
-    logsDirPath: str = None
+    appDirPath: str = os.path.join(home_dir, ".inlineterminal")
+    configDirPath: str = os.path.join(appDirPath, "config")
+    logsDirPath: str = os.path.join(appDirPath,'logs')
 
     #FILE-PATH Variables
-    configFilePath: str = None
-    logsFilePath: str = None
+    configFilePath: str = os.path.join(configDirPath, 'config.yml')
+    logsFilePath: str = os.path.join(logsDirPath, 'inlineterminal.log')
+
     
+    
+
     def __init__(self):
         self.ConfigSet()
         self.PassSet()
-    # class OpenConfigFile:
-    #     with open(configFilePath, "r")as f:
-    #                 configdata = yaml.safe_load(f)
-    #                 Config.isDirConfig = configdata["setupVar"]["isDirConfig"]
-    #                 Config.isPasswordSet = configdata["setupVar"]["isPasswordSet"]
-    #                 Config.isAPIKeyConfig = configdata["setupVar"]["isAPIKeyConfig"]
-    #                 Config.isSetupDone = configdata["setupVar"]["isSetupDone"]
-    #                 Config.appDirPath = configdata["env"]["appDirPath"]
-    #                 Config.configDirPath = configdata["env"]["configDirPath"]
-    #                 Config.logsDirPath = configdata["env"]["logsDirPath"]
-
 
     def addSpacing(self, text):# this is a custom function to add the spacing in the automated task
-        print("="*60)
-        print(text)
-
+        if text:
+            print('+',"="*30,text,"="*30,'+')
+        else:
+            print('+',"="*60,'+')
+            
     def ConfigSet(self):
         try:
-            home_dir = os.path.expanduser("~")
-            Config.appDirPath = app_dir = os.path.join(home_dir, ".inlineterminal")
-            Config.logsDirPath = logs_dir = os.path.join(app_dir, "logs")
-            Config.configDirPath = config_dir = os.path.join(app_dir, "config")
-            config_file_path = os.path.join(config_dir, "config.yml")
-            logs_file_path = os.path.join(logs_dir, "inlineterminal.log")
-            if not os.path.exists(app_dir):
+            if not os.path.exists(Config.appDirPath):
                 self.addSpacing("No Set-up Directory Found For Inline-Terminal")
-                self.addSpacing("Setting up the dir and the all the necessary files for the Safe Execution of Inline-Terminal")
-                os.makedirs(app_dir, exist_ok=True)
-                os.makedirs(logs_dir, exist_ok=True)
-                os.makedirs(config_dir, exist_ok=True)
+                self.addSpacing("Setting up the directory and the all the necessary files for the Safe Execution of Inline-Terminal")
+                os.makedirs(Config.appDirPath, exist_ok=True)
+                os.makedirs(Config.logsDirPath, exist_ok=True)
+                os.makedirs(Config.configDirPath, exist_ok=True)
                 self.addSpacing("")
-                Config.configFilePath = config_file_path = os.path.join(config_dir, "config.yml")
-                Config.logsFilePath = logs_file_path = os.path.join(logs_dir, "inlineterminal.log")
                 default_config_content = f'''
 serviceName: Inline-Terminal
 version : 1.0
@@ -126,52 +116,46 @@ apikey:
     setOpenAI: false
     setAnthropic: false
 '''
-                with open(config_file_path, "w") as f:
+                with open(Config.configFilePath, "w") as f:
                     f.write(default_config_content)
                     self.addSpacing("Setting up Completed")
             else:
-                with open(config_file_path, "r")as f:
+                with open(Config.configFilePath, "r")as f:
                     configdata = yaml.safe_load(f)
                     Config.isDirConfig = configdata["setupVar"]["isDirConfig"]
                     Config.isPasswordSet = configdata["setupVar"]["isPasswordSet"]
                     Config.isAPIKeyConfig = configdata["setupVar"]["isAPIKeyConfig"]
-                    Config.isSetupDone = configdata["setupVar"]["isSetupDone"]
-                    Config.appDirPath = configdata["env"]["appDirPath"]
-                    Config.configDirPath = configdata["env"]["configDirPath"]
-                    Config.logsDirPath = configdata["env"]["logsDirPath"]
-        
+
         except FileNotFoundError as e:
             print(f"Error Occurred: {e}")
 
 
     def PassSet(self):
+        with open(Config.configFilePath, 'r') as f:
+            configdata = yaml.safe_load(f)
         if not Config.isPasswordSet:
-            passwordsetIP = input("do you want to set the passwords for api-keys??(Y/N)")
-            while(passwordsetIP.lower() not in ["y","n"]):
-                print("Invalid Input Please enter Y or N")
-                passwordsetIP = input("do you want to set the passwords for api-keys??(Y/N)")
-            if passwordsetIP.lower()=="y":
-                print("If you don't have API-KEY Press ENTER...")
-                setGeminiApiKey = input("Enter Gemini-API-Key: ")
-                setOPENAIApiKey = input("Enter OpenAI-API-Key: ")
-                setAnthropicApiKey = input("Enter Anthropic-API-Key: ")
-                print("Type a Password which you will remeber it will ask for each session of a terminal to avoid any conflict.")
-                API_Password = input("Enter the Password to store API-KEY's: ")
-                hashed_password = ph.hash(API_Password)
-                hashed_password_list = hashed_password.split("$")
-                if setGeminiApiKey:
-                    keyring.set_password(service_name= "Gemini", username=hashed_password_list[len(hashed_password_list)-1], password=setGeminiApiKey)
-                if setOPENAIApiKey:
-                    keyring.set_password(service_name="OpenAI", username=hashed_password_list[len(hashed_password_list)-1], password=setOPENAIApiKey)
-                if setAnthropicApiKey:
-                    keyring.set_password(service_name="Anthropic", username=hashed_password_list[len(hashed_password_list)-1], password=setAnthropicApiKey)
-                with open(Config.configFilePath, "w") as f:
-                    configdata = yaml.safe_load(f)
-                    configdata["setupVar"]["isPasswordSet"] = 'true'
-                print("API-KEY's Set Successfully")
+            print("Type a Password which you will remeber it will ask for each session of a terminal to avoid any conflict.")
+            API_Password = input("You have to set the passwords for Security of api-keys: ")
+            while not API_Password:
+                print("Password cannot be Empty Field")
+                API_Password = input("Enter the password: ")
+            self.addSpacing("")
+            print("If you don't have API-KEY Press ENTER...")
+            Config.GEMINI_API_KEY = input("Enter Gemini-API-Key: ")
+            Config.OPENAI_API_KEY = input("Enter OpenAI-API-Key: ")
+            Config.ANTHROPIC_API_KEY = input("Enter Anthropic-API-Key: ")
+            hashed_password = ph.hash(API_Password)
+            hashed_password_list = hashed_password.split("$")
+            if Config.GEMINI_API_KEY:
+                keyring.set_password(service_name= "Gemini", username=hashed_password_list[len(hashed_password_list)-1], password=Config.GEMINI_API_KEY)
+            if Config.OPENAI_API_KEY:
+                keyring.set_password(service_name="OpenAI", username=hashed_password_list[len(hashed_password_list)-1], password=Config.OPENAI_API_KEY)
+            if Config.ANTHROPIC_API_KEY:
+                keyring.set_password(service_name="Anthropic", username=hashed_password_list[len(hashed_password_list)-1], password=Config.ANTHROPIC_API_KEY)
+            self.addSpacing("API-KEY's and Password Set Successfully")
+        else:
+            self.addSpacing("PASSWORD AND API_KEY FETCHED SUCCESSFULLY")
 
-            else:
-                print("Skipping API-KEY setup")
     
     def addAPIKEYS():
         pass
@@ -253,16 +237,6 @@ class APICALLS:
                             "claude-3-sonnet-20240229",
                             "claude-3-haiku-20240307"}
         return models
-
-       
-
-
-
-    
-    
-
-
-
 
 load_dotenv()
 gemini_api_key = os.getenv('GEMINI_API_KEY')
