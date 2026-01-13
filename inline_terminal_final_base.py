@@ -38,6 +38,7 @@ from openai import OpenAI
 import anthropic
 from argon2 import PasswordHasher, Type
 import yaml
+from ruamel.yaml import YAML
 
 
 
@@ -54,6 +55,10 @@ ph = PasswordHasher(
 )
 
 class Config:
+    #Use of Ruamel.yaml and creating the object of YAML
+    ru_yaml = YAML()
+    ru_yaml.preserve_quotes = True
+
     #HOME-DIR VARS
     home_dir = os.path.expanduser("~")
 
@@ -76,12 +81,15 @@ class Config:
     configFilePath: str = os.path.join(configDirPath, 'config.yml')
     logsFilePath: str = os.path.join(logsDirPath, 'inlineterminal.log')
 
-    
-    
+    #API-KEY set-VARS
+    setGemini: bool = False
+    setOpenAI: bool =  False
+    setAnthropic: bool = False
 
     def __init__(self):
         self.ConfigSet()
         self.PassSet()
+        self.FetchApiKeys()
 
     def addSpacing(self, text):# this is a custom function to add the spacing in the automated task
         if text:
@@ -132,7 +140,7 @@ apikey:
 
     def PassSet(self):
         with open(Config.configFilePath, 'r') as f:
-            configdata = yaml.safe_load(f)
+            configdata = Config.ru_yaml.load(f)
         if not Config.isPasswordSet:
             print("Type a Password which you will remeber it will ask for each session of a terminal to avoid any conflict.")
             API_Password = input("You have to set the passwords for Security of api-keys: ")
@@ -146,12 +154,18 @@ apikey:
             Config.ANTHROPIC_API_KEY = input("Enter Anthropic-API-Key: ")
             hashed_password = ph.hash(API_Password)
             hashed_password_list = hashed_password.split("$")
+            keyring.set_password(service_name='.inlineterminal', username=hashed_password_list[len(hashed_password_list)-1], password='inlineterminal')
             if Config.GEMINI_API_KEY:
                 keyring.set_password(service_name= "Gemini", username=hashed_password_list[len(hashed_password_list)-1], password=Config.GEMINI_API_KEY)
+                configdata['apikey']['setGemini'] = True
             if Config.OPENAI_API_KEY:
                 keyring.set_password(service_name="OpenAI", username=hashed_password_list[len(hashed_password_list)-1], password=Config.OPENAI_API_KEY)
+                configdata['apikey']['setOpenAI'] = True
             if Config.ANTHROPIC_API_KEY:
                 keyring.set_password(service_name="Anthropic", username=hashed_password_list[len(hashed_password_list)-1], password=Config.ANTHROPIC_API_KEY)
+                configdata['apikey']['setAnthropic'] = True
+            with open(Config.configFilePath, 'w') as f:
+                Config.ru_yaml.dump(configdata, f)
             self.addSpacing("API-KEY's and Password Set Successfully")
         else:
             self.addSpacing("PASSWORD AND API_KEY FETCHED SUCCESSFULLY")
@@ -159,7 +173,34 @@ apikey:
     
     def addAPIKEYS():
         pass
+
+    def apiKeysConfigChange(self):
+        pass
         
+    def FetchApiKeys():
+        with open(Config.configFilePath, 'r') as f:
+            configdata = Config.ru_yaml.load(f)
+            Config.setGemini = configdata['apikey']['setGemini']
+            Config.setOpenAI = configdata['apikey']['setOpenAI']
+            Config.setAnthropic = configdata['apikey']['setAnthropic']
+        if configdata['apikey']['setGemini'] or configdata['apikey']['setOpenAI'] or configdata['apikey']['setAnthropic']:
+            APIpassword = input("Enter the API-Keys Password to access the API-Keys: ")
+            hashed_password = ph.hash(APIpassword)
+            hashed_password_list = hashed_password.split("$")
+            while not keyring.get_password('.inlineterminal',hashed_password_list[len(hashed_password_list)-1]):
+                print("Password is Incorrect!!!!!!")
+                APIpassword = input("Re-Enter the API-Keys Password to access the API-Keys: ")
+                hashed_password = ph.hash(APIpassword)
+                hashed_password_list = hashed_password.split("$")
+            if Config.setGemini:
+                Config.GEMINI_API_KEY = keyring.get_password("Gemini", hashed_password_list[len(hashed_password_list)-1])
+            if Config.setOpenAI:
+                Config.OPENAI_API_KEY = keyring.get_password('OpenAI', hashed_password_list[len(hashed_password_list)-1])
+            if Config.setAnthropic:
+                Config.ANTHROPIC_API_KEY = keyring.get_password("Anthropic", hashed_password_list[len(hashed_password_list)-1])
+            
+        
+            
 
         
 
