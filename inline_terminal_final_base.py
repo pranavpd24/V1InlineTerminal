@@ -199,6 +199,7 @@ apikey:
             if Config.setAnthropic:
                 Config.ANTHROPIC_API_KEY = keyring.get_password("Anthropic", hashed_password_list[len(hashed_password_list)-1])
             
+    
         
             
 
@@ -1001,7 +1002,7 @@ def execute_with_ieditor(execute_cmd_list):
                 print(f"AI writing code to: {full_path}")
                 
                 # Direct write to correct path
-                with open(full_path, 'w') as f:
+                with open(full_path, 'w', encoding='utf-8') as f:
                     f.write(code_content)
                 print(f"Code written to {full_path}")
                 
